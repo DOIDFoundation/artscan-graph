@@ -1,0 +1,16 @@
+{
+  "name": "artscan",
+  "license": "UNLICENSED",
+  "scripts": {
+    "codegen": "graph codegen",
+    "build": "graph build",
+    "deploy": "graph deploy --studio artscan",
+    "create-local": "graph create --node http://localhost:8020/ artscan",
+    "remove-local": "graph remove --node http://localhost:8020/ artscan",
+    "deploy-local": "graph deploy --node http://localhost:8020/ --ipfs http://localhost:5001 artscan"
+  },
+  "dependencies": {
+    "@graphprotocol/graph-cli": "0.30.4",
+    "@graphprotocol/graph-ts": "0.27.0"
+  }
+}
