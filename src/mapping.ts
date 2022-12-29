@@ -1,6 +1,7 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { Blockchain, Collection, Owner, Token, Transaction } from "../generated/schema";
+import { Blockchain, Collection, Owner, Token, Transaction, Domain } from "../generated/schema";
 import { Transfer } from "../generated/Arts/ERC721";
+import { AddressChanged, NameMigrated, NameRegistered } from "../generated/DoidRegistry/DoidRegistry";
 import { toBigDecimal } from "./utils/helpers";
 import { fetchName, fetchSymbol, fetchTokenURI } from "./utils/eip721";
 
@@ -123,4 +124,26 @@ export function handleTransfer(event: Transfer): void {
   transaction.block = event.block.number;
   transaction.timestamp = event.block.timestamp;
   transaction.save();
+}
+
+export function handleNameRegistered(event: NameRegistered): void {
+  let domain = new Domain(event.params.id.toHexString())
+  domain.owner = event.params.owner.toHexString()
+  domain.address = event.params.owner.toHexString()
+  domain.name = event.params.name.toString()
+  domain.coinType = BigInt.fromI32(60)
+  domain.createdAt = event.block.timestamp
+  domain.blockNumber = event.block.number
+  domain.save()
+}
+
+export function handleAddressChanged(event: AddressChanged): void {
+  let node = event.params.node
+  let domain = Domain.load(node.toHexString())
+  if(domain == null){
+    return
+  }
+  domain.address = event.params.newAddress.toHexString()
+  domain.coinType = event.params.coinType
+  domain.save()
 }

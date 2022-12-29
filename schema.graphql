@@ -140,3 +140,19 @@ type Collection @entity {
     "Updated At"
     updatedAt: BigInt!
 }
+
+type Domain @entity{
+    # nameHash of the name
+    id: ID!
+    # string name of doid
+    name: String
+    # owner addres
+    owner: Owner!
+    # resolved addres of the name
+    address: Owner!
+    coinType: BigInt!
+    # 
+    createdAt: BigInt!
+    #
+    blockNumber: BigInt!
+}
