@@ -1,7 +1,7 @@
 import { Address, BigInt } from "@graphprotocol/graph-ts";
-import { Blockchain, Collection, Owner, Token, Transaction, Domain } from "../generated/schema";
+import { Blockchain, Contract, Owner, Token, Transaction, DOID } from "../generated/schema";
 import { Transfer } from "../generated/Arts/ERC721";
-import { AddressChanged, NameMigrated, NameRegistered } from "../generated/DoidRegistry/DoidRegistry";
+import { AddressChanged, NameRegistered } from "../generated/DoidRegistry/DoidRegistry";
 import { toBigDecimal } from "./utils/helpers";
 import { fetchName, fetchSymbol, fetchTokenURI } from "./utils/eip721";
 
@@ -10,7 +10,7 @@ export function handleTransfer(event: Transfer): void {
   if (blockchain === null) {
     // Blockchain
     blockchain = new Blockchain("DOID");
-    blockchain.totalCollections = BigInt.zero();
+    blockchain.totalContracts = BigInt.zero();
     blockchain.totalTokens = BigInt.zero();
     blockchain.totalTransactions = BigInt.zero();
     blockchain.save();
@@ -18,29 +18,29 @@ export function handleTransfer(event: Transfer): void {
   blockchain.totalTransactions = blockchain.totalTransactions.plus(BigInt.fromI32(1));
   blockchain.save();
 
-  let collection = Collection.load(event.address.toHex());
-  if (collection === null) {
-    // Collection
-    collection = new Collection(event.address.toHex());
-    collection.name = fetchName(event.address);
-    collection.symbol = fetchSymbol(event.address);
-    collection.totalTokens = BigInt.zero();
-    collection.totalTransactions = BigInt.zero();
-    collection.block = event.block.number;
-    collection.createdAt = event.block.timestamp;
-    collection.updatedAt = event.block.timestamp;
-    collection.save();
+  let contract = Contract.load(event.address.toHex());
+  if (contract === null) {
+    // Contract
+    contract = new Contract(event.address.toHex());
+    contract.name = fetchName(event.address);
+    contract.symbol = fetchSymbol(event.address);
+    contract.totalTokens = BigInt.zero();
+    contract.totalTransactions = BigInt.zero();
+    contract.block = event.block.number;
+    contract.createdAt = event.block.timestamp;
+    contract.updatedAt = event.block.timestamp;
+    contract.save();
 
     // Blockchain
-    blockchain.totalCollections = blockchain.totalCollections.plus(BigInt.fromI32(1));
+    blockchain.totalContracts = blockchain.totalContracts.plus(BigInt.fromI32(1));
     blockchain.save();
   }
-  collection.totalTransactions = collection.totalTransactions.plus(BigInt.fromI32(1));
-  collection.updatedAt = event.block.timestamp;
+  contract.totalTransactions = contract.totalTransactions.plus(BigInt.fromI32(1));
+  contract.updatedAt = event.block.timestamp;
   if (event.params.to.equals(Address.zero())){
-    collection.totalTokens = collection.totalTokens.minus(BigInt.fromI32(1));
+    contract.totalTokens = contract.totalTokens.minus(BigInt.fromI32(1));
   }
-  collection.save();
+  contract.save();
 
   let from = Owner.load(event.params.from.toHex());
   if (from === null) {
@@ -82,7 +82,7 @@ export function handleTransfer(event: Transfer): void {
   if (token === null) {
     // Token
     token = new Token(event.address.toHex() + "-" + event.params.tokenId.toString());
-    token.collection = collection.id;
+    token.contract = contract.id;
     token.tokenID = event.params.tokenId;
     token.tokenURI = fetchTokenURI(event.address, event.params.tokenId);
     token.minter = to.id;
@@ -98,9 +98,9 @@ export function handleTransfer(event: Transfer): void {
     to.totalTokensMinted = to.totalTokensMinted.plus(BigInt.fromI32(1));
     to.save();
 
-    // Collection
-    collection.totalTokens = collection.totalTokens.plus(BigInt.fromI32(1));
-    collection.save();
+    // Contract
+    contract.totalTokens = contract.totalTokens.plus(BigInt.fromI32(1));
+    contract.save();
 
     // Blockchain
     blockchain.totalTokens = blockchain.totalTokens.plus(BigInt.fromI32(1));
@@ -117,7 +117,7 @@ export function handleTransfer(event: Transfer): void {
   transaction.hash = event.transaction.hash;
   transaction.from = from.id;
   transaction.to = to.id;
-  transaction.collection = collection.id;
+  transaction.contract = contract.id;
   transaction.token = token.id;
   transaction.gasLimit = event.transaction.gasLimit;
   transaction.gasPrice = toBigDecimal(event.transaction.gasPrice, 9);
@@ -127,23 +127,23 @@ export function handleTransfer(event: Transfer): void {
 }
 
 export function handleNameRegistered(event: NameRegistered): void {
-  let domain = new Domain(event.params.id.toHexString())
-  domain.owner = event.params.owner.toHexString()
-  domain.address = event.params.owner.toHexString()
-  domain.name = event.params.name.toString()
-  domain.coinType = BigInt.fromI32(60)
-  domain.createdAt = event.block.timestamp
-  domain.blockNumber = event.block.number
-  domain.save()
+  let doid = new DOID(event.params.id.toHexString())
+  doid.owner = event.params.owner.toHexString()
+  doid.address = event.params.owner.toHexString()
+  doid.name = event.params.name.toString()
+  doid.coinType = BigInt.fromI32(60)
+  doid.createdAt = event.block.timestamp
+  doid.blockNumber = event.block.number
+  doid.save()
 }
 
 export function handleAddressChanged(event: AddressChanged): void {
   let node = event.params.node
-  let domain = Domain.load(node.toHexString())
-  if(domain == null){
+  let doid = DOID.load(node.toHexString())
+  if(doid == null){
     return
   }
-  domain.address = event.params.newAddress.toHexString()
-  domain.coinType = event.params.coinType
-  domain.save()
+  doid.address = event.params.newAddress.toHexString()
+  doid.coinType = event.params.coinType
+  doid.save()
 }

@@ -5,8 +5,8 @@ type Blockchain @entity {
     "ID"
     id: ID!
 
-    "Total of Collections"
-    totalCollections: BigInt!
+    "Total of Contracts"
+    totalContracts: BigInt!
 
     "Total of Tokens"
     totalTokens: BigInt!
@@ -50,8 +50,8 @@ type Token @entity {
     "ID"
     id: ID!
 
-    "Collection"
-    collection: Collection!
+    "Contract"
+    contract: Contract!
 
     "Token ID"
     tokenID: BigInt!
@@ -80,6 +80,7 @@ type Token @entity {
     "Updated At"
     updatedAt: BigInt!
 }
+
 """
 EIP-721 Transaction(s)
 """
@@ -95,8 +96,8 @@ type Transaction @entity {
     "Receiver"
     to: Owner!
 
-    "Collection"
-    collection: Collection!
+    "Contract"
+    contract: Contract!
     "Token"
     token: Token!
 
@@ -110,10 +111,11 @@ type Transaction @entity {
     "Block timestamp"
     timestamp: BigInt!
 }
+
 """
-EIP-721 Collection(s)
+EIP-721 Contract(s)
 """
-type Collection @entity {
+type Contract @entity {
     "ID"
     id: ID!
 
@@ -124,12 +126,12 @@ type Collection @entity {
     symbol: String!
 
     "List of Tokens"
-    tokens: [Token!]! @derivedFrom(field: "collection")
+    tokens: [Token!]! @derivedFrom(field: "contract")
     "Total of Tokens"
     totalTokens: BigInt!
 
     "List of Transactions"
-    transactions: [Transaction!]! @derivedFrom(field: "collection")
+    transactions: [Transaction!]! @derivedFrom(field: "contract")
     "Total of Transactions"
     totalTransactions: BigInt!
 
@@ -141,7 +143,7 @@ type Collection @entity {
     updatedAt: BigInt!
 }
 
-type Domain @entity{
+type DOID @entity{
     # nameHash of the name
     id: ID!
     # string name of doid
