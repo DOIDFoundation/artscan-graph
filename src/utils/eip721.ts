@@ -23,12 +23,12 @@ export function fetchSymbol(address: Address): string {
   return "";
 }
 
-export function fetchTokenURI(address: Address, tokenID: BigInt): string | null {
+export function fetchTokenURI(address: Address, tokenID: BigInt): string  {
   const contract = ERC721.bind(address);
   const uriResult = contract.try_tokenURI(tokenID);
   if (!uriResult.reverted) {
     return uriResult.value;
   }
 
-  return null;
+  return "";
 }

@@ -53,14 +53,32 @@ type Token @entity {
     "Contract"
     contract: Contract!
 
+    "Collection"
+    collection: Collection!
+
+    "id in collection"
+    collectionId: String
+
     "Token ID"
     tokenID: BigInt!
 
     "Token URI"
-    tokenURI: String
+    tokenURI: String!
 
-    "Minter"
-    minter: Owner!
+    "is tokenURI an ipfs file"
+    isMetaIPFS: Boolean
+
+    "Name in token meta, if isMetaIPFS is true"
+    name: String
+
+    "Description in token meta, if isMetaIPFS is true"
+    description: String
+
+    "Image in token meta, if isMetaIPFS is true"
+    image: String
+
+    "Artist"
+    artist: Owner!
 
     "Owner"
     owner: Owner!
@@ -125,6 +143,12 @@ type Contract @entity {
     "Symbol"
     symbol: String!
 
+    "Creator"
+    creator: Owner!
+
+    "Is contract creator artist, otherwise contract creator is platform(e.g. SuperRare or KnownOrigin)"
+    creatorIsArtist: Boolean
+
     "List of Tokens"
     tokens: [Token!]! @derivedFrom(field: "contract")
     "Total of Tokens"
@@ -143,6 +167,29 @@ type Contract @entity {
     updatedAt: BigInt!
 }
 
+"""
+Artscan Collection(s)
+"""
+type Collection @entity {
+    "ID"
+    id: ID!
+
+    "List of Tokens"
+    tokens: [Token!]! @derivedFrom(field: "collection")
+    "Total of Tokens"
+    totalTokens: BigInt!
+
+    "Block number"
+    block: BigInt!
+    "Created At"
+    createdAt: BigInt!
+    "Updated At"
+    updatedAt: BigInt!
+}
+
+"""
+DOID Name(s)
+"""
 type DOID @entity{
     # nameHash of the name
     id: ID!
