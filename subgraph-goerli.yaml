@@ -7,7 +7,7 @@ dataSources:
     network: goerli
     source:
       abi: ERC721
-      startBlock: 8120000
+      startBlock: 8220300
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -25,9 +25,9 @@ dataSources:
     name: DoidRegistry
     network: goerli
     source:
-      address: "0xe8B04d54BeefE28C357FDDAf2182e9342cf7b885"
+      address: "0xab4d8acb8538e7f2b81a8e0db6530bbec96678b5"
       abi: DoidRegistry
-      startBlock: 8120000
+      startBlock: 8220744
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -39,8 +39,7 @@ dataSources:
         - name: DoidRegistry
           file: ./abis/DoidRegistry.json
       eventHandlers:
-        - event: NameRegistered(indexed uint256,indexed string,indexed address)
+        - event: NameRegistered(indexed uint256,string,indexed address)
           handler: handleNameRegistered
         - event: AddressChanged(indexed bytes32,uint256,bytes)
           handler: handleAddressChanged
-
