@@ -1,4 +1,4 @@
-import { Address, ethereum, ipfs, json, BigInt } from "@graphprotocol/graph-ts";
+import { Address, ethereum, json, BigInt } from "@graphprotocol/graph-ts";
 import { Blockchain, Contract, Owner, Token, Transaction, DOID, Collection } from "../generated/schema";
 import { Transfer } from "../generated/Arts/ERC721";
 import { AddressChanged, NameRegistered } from "../generated/DoidRegistry/DoidRegistry";
@@ -85,10 +85,12 @@ function loadOrNewOwner(address: string, block: ethereum.Block): Owner {
   return owner;
 }
 
-function loadOrNewCollection(id: string, block: ethereum.Block): Collection {
-  let collection = Collection.load(id);
+function loadOrNewCollection(artist:string, id: string, block: ethereum.Block): Collection {
+  let collection = Collection.load(artist + "-" + id);
   if (collection === null) {
-    collection = new Collection(id);
+    collection = new Collection(artist + "-" + id);
+    collection.slug = id;
+    collection.artist = artist;
     collection.totalTokens = BIG0;
     collection.block = block.number;
     collection.createdAt = block.timestamp;
@@ -125,10 +127,6 @@ export function handleTransfer(event: Transfer): void {
     contract = new Contract(event.address.toHex());
     contract.name = fetchName(event.address);
     contract.symbol = fetchSymbol(event.address);
-    contract.creator = from.id;
-    contract.creatorIsArtist =
-      contract.creator != "0xb932a70a57673d89f4acffbe830e8ed7f75fb9e0" &&
-      contract.creator != "0x48cef95fd927fdd5b17fdcbf2af8e82f4c064077";
     contract.totalTokens = BIG0;
     contract.totalTransactions = BIG0;
     contract.block = event.block.number;
@@ -164,38 +162,38 @@ export function handleTransfer(event: Transfer): void {
     token.contract = contract.id;
     token.tokenID = event.params.tokenId;
     token.tokenURI = fetchTokenURI(event.address, event.params.tokenId);
+    token.isMetaIPFS = false;
     if (token.tokenURI != null && token.tokenURI.startsWith("ipfs://")) {
       token.isMetaIPFS = true;
-      let metadata = ipfs.cat(token.tokenURI.replace("ipfs://", "/"));
-      if (metadata) {
-        const value = json.fromBytes(metadata).toObject();
-        if (value) {
-          const image = value.get("image");
-          if (image) {
-            token.image = image.toString();
-          }
-          const name = value.get("name");
-          if (name) {
-            token.name = name.toString();
-          }
-          const description = value.get("description");
-          if (description) {
-            token.description = description.toString();
-          }
-        }
-      }
+//      let metadata = ip1fs.cat(token.tokenURI.replace("ipfs://", "/"));
+//      if (metadata) {
+//        const value = json.fromBytes(metadata).toObject();
+//        if (value) {
+//          const image = value.get("image");
+//          if (image) {
+//            token.image = image.toString();
+//          }
+//          const name = value.get("name");
+//          if (name) {
+//            token.name = name.toString();
+//          }
+//          const description = value.get("description");
+//          if (description) {
+//            token.description = description.toString();
+//          }
+//        }
+//      }
     }
-    let artist = contract.creatorIsArtist
-      ? loadOrNewOwner(contract.creator, event.block)
-      : event.params.from.equals(Address.zero())
+    let artist = event.params.from.equals(Address.zero())
       ? to
       : from;
     token.artist = artist.id;
     let ret= slugAndIdFromToken(token, contract);
     if (ret) {
-      let collection = loadOrNewCollection(ret[0], event.block);
+      let collection = loadOrNewCollection(artist.id, ret[0], event.block);
       token.collection = collection.id;
       token.collectionId = ret[1];
+      token.collectionSeq = collection.totalTokens;
 
       // Collection
       collection.totalTokens = collection.totalTokens.plus(BIG1);

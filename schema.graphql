@@ -59,6 +59,8 @@ type Token @entity {
     "id in collection"
     collectionId: String
 
+    collectionSeq: BigInt!
+
     "Token ID"
     tokenID: BigInt!
 
@@ -66,7 +68,7 @@ type Token @entity {
     tokenURI: String!
 
     "is tokenURI an ipfs file"
-    isMetaIPFS: Boolean
+    isMetaIPFS: Boolean!
 
     "Name in token meta, if isMetaIPFS is true"
     name: String
@@ -143,12 +145,6 @@ type Contract @entity {
     "Symbol"
     symbol: String!
 
-    "Creator"
-    creator: Owner!
-
-    "Is contract creator artist, otherwise contract creator is platform(e.g. SuperRare or KnownOrigin)"
-    creatorIsArtist: Boolean
-
     "List of Tokens"
     tokens: [Token!]! @derivedFrom(field: "contract")
     "Total of Tokens"
@@ -176,6 +172,8 @@ type Collection @entity {
 
     "List of Tokens"
     tokens: [Token!]! @derivedFrom(field: "collection")
+    artist: Owner
+    slug: String
     "Total of Tokens"
     totalTokens: BigInt!
 
