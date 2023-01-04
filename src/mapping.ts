@@ -104,6 +104,20 @@ function slugAndIdFromToken(token: Token, contract: Contract): string[] | null {
   return [slug, result ? result[1] : token.tokenID.toString()];
 }
 
+function IPFSPathFromURL(urlString: string): string | null {
+  if (urlString == null) {
+    return null;
+  }
+  if (urlString.startsWith("ipfs://")) {
+    return urlString.replace("ipfs://", "/");
+  }
+  let lastIndex = urlString.lastIndexOf("ipfs/");
+  if (lastIndex == -1) {
+    return null;
+  }
+  return urlString.substring(lastIndex + 4);
+}
+
 function loadOrNewOwner(address: string, block: ethereum.Block): Owner {
   let owner = Owner.load(address);
   if (owner === null) {
@@ -197,9 +211,10 @@ export function handleTransfer(event: Transfer): void {
     token.tokenID = event.params.tokenId;
     token.tokenURI = fetchTokenURI(event.address, event.params.tokenId);
     token.isMetaIPFS = false;
-    if (token.tokenURI != null && token.tokenURI.startsWith("ipfs://")) {
+    let IPFSPath = IPFSPathFromURL(token.tokenURI);
+    if (IPFSPath) {
       token.isMetaIPFS = true;
-//      let metadata = ip1fs.cat(token.tokenURI.replace("ipfs://", "/"));
+//      let metadata = ip1fs.cat(IPFSPath);
 //      if (metadata) {
 //        const value = json.fromBytes(metadata).toObject();
 //        if (value) {
