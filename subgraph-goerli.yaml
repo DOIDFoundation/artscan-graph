@@ -7,7 +7,7 @@ dataSources:
     network: goerli
     source:
       abi: ERC721
-      startBlock: 8120000
+      startBlock: 8200000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
@@ -27,7 +27,7 @@ dataSources:
     source:
       address: "0xe8B04d54BeefE28C357FDDAf2182e9342cf7b885"
       abi: DoidRegistry
-      startBlock: 8120000
+      startBlock: 8200000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
