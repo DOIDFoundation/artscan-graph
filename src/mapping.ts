@@ -1,9 +1,10 @@
-import { Address, ethereum, json,TypedMapEntry, BigInt } from "@graphprotocol/graph-ts";
+import { Address, ethereum, json, BigInt } from "@graphprotocol/graph-ts";
 import { Blockchain, Contract, Owner, Token, Transaction, DOID, Collection } from "../generated/schema";
 import { Transfer } from "../generated/Arts/ERC721";
 import { AddressChanged, NameRegistered } from "../generated/DoidRegistry/DoidRegistry";
 import { toBigDecimal } from "./utils/helpers";
 import { fetchName, fetchSymbol, fetchTokenURI } from "./utils/eip721";
+import { RegExp } from "assemblyscript-regex";
 
 const BIG0 = BigInt.zero();
 const BIG1 = BigInt.fromI32(1);
@@ -20,7 +21,7 @@ function slugify(input: string): string {
       (charCode >= 58 && charCode <= 64) || //':;<=>?@'
       charCode == 91 || //'['
       (charCode >= 93 && charCode <= 96) || //']^_`'
-      charCode >= 123 //'{|}~' and unicode
+      (charCode >= 123 && charCode <= 126) //'{|}~'
     ) {
       ret.push(" ");
     } else ret.push(input.charAt(index));
@@ -49,41 +50,6 @@ function slugify(input: string): string {
   return ret.join("");
 }
 
-function slugAndIdFromName(input: string): string[] | null {
-  // Try find ending numbers
-  let idStarts = input.length - 1;
-  for (; idStarts >= 0; idStarts--) {
-    let charCode = input.charCodeAt(idStarts);
-    // Not numeric characters, break
-    if (charCode < 48 || charCode > 57) break;
-  }
-
-  // Not ending with numbers
-  if (idStarts == input.length - 1) {
-    return null;
-  }
-
-  // Try find separator between name and id
-  let nameEnds = idStarts;
-  for (; nameEnds >= 0; nameEnds--) {
-    let charCode = input.charCodeAt(nameEnds);
-    // Skip space, tab and #
-    if (
-      charCode != 9 && // '\t'
-      charCode != 32 && // ' '
-      charCode != 35 // '#'
-    )
-      break;
-  }
-
-  // Separator not found
-  if (nameEnds < 0 || nameEnds == idStarts) {
-    return null;
-  }
-
-  return [input.substring(0, nameEnds + 1), input.substring(idStarts + 1)];
-}
-
 function slugAndIdFromToken(token: Token, contract: Contract): string[] | null {
   let nameString: string;
   if (token.isMetaIPFS && token.name) {
@@ -93,15 +59,15 @@ function slugAndIdFromToken(token: Token, contract: Contract): string[] | null {
   } else {
     return null;
   }
-  let result = slugAndIdFromName(nameString);
+  var regex: RegExp = new RegExp("^(.*?)[ #](\\d*)$");
+  var result = regex.exec(nameString);
   if (result) {
-    nameString = result[0];
+    nameString = result.matches[1];
   }
-  let slug = slugify(nameString);
-  if (slug.length == 0) {
-    return null;
-  }
-  return [slug, result ? result[1] : token.tokenID.toString()];
+  return [
+    slugify(nameString),
+    result ? result.matches[2] : token.tokenID.toString(),
+  ];
 }
 
 function loadOrNewOwner(address: string, block: ethereum.Block): Owner {
@@ -232,8 +198,6 @@ export function handleTransfer(event: Transfer): void {
       // Collection
       collection.totalTokens = collection.totalTokens.plus(BIG1);
       collection.save();
-    } else {
-      return;
     }
     token.owner = to.id;
     token.burned = false;
