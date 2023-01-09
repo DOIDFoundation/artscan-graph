@@ -28,6 +28,12 @@ type Owner @entity {
     "Total of Tokens Minted"
     totalTokensMinted: BigInt!
 
+    "Number of token holders"
+    totalTokenHolders: BigInt!
+    "list of token holders"
+    tokenHolders: [String!]!
+    tokenHoldersNumber: [BigInt!]!
+
     "List of Transactions (as Sender)"
     fromTransactions: [Transaction!]! @derivedFrom(field: "from")
     "List of Transactions (as Receiver)"

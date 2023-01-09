@@ -7,13 +7,12 @@ dataSources:
     network: mainnet
     source:
       abi: ERC721
+      startBlock: 10000000
     mapping:
       kind: ethereum/events
       apiVersion: 0.0.6
       language: wasm/assemblyscript
       entities:
-        - Approval
-        - ApprovalForAll
         - Transfer
       abis:
         - name: ERC721
@@ -22,4 +21,26 @@ dataSources:
         - event: Transfer(indexed address,indexed address,indexed uint256)
           handler: handleTransfer
       file: ./src/mapping.ts
+  - kind: ethereum/contract
+    name: DoidRegistry
+    network: mainnet
+    source:
+      address: "0xcb9302da98405ecc50b1d6d4f9671f05e143b5f7"
+      abi: DoidRegistry
+      startBlock: 16251035
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      file: ./src/mapping.ts
+      entities:
+        - NameRegistered
+      abis:
+        - name: DoidRegistry
+          file: ./abis/DoidRegistry.json
+      eventHandlers:
+        - event: NameRegistered(indexed uint256,indexed string,indexed address)
+          handler: handleNameRegistered
+        - event: AddressChanged(indexed bytes32,uint256,bytes)
+          handler: handleAddressChanged
 

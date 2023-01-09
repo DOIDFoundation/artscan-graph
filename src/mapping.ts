@@ -1,4 +1,4 @@
-import { Address, BigInt } from "@graphprotocol/graph-ts";
+import { Address, log, BigInt } from "@graphprotocol/graph-ts";
 import { Blockchain, Contract, Owner, Token, Transaction, DOID } from "../generated/schema";
 import { Transfer } from "../generated/Arts/ERC721";
 import { AddressChanged, NameRegistered } from "../generated/DoidRegistry/DoidRegistry";
@@ -46,6 +46,9 @@ export function handleTransfer(event: Transfer): void {
   if (from === null) {
     // Owner - as Sender
     from = new Owner(event.params.from.toHex());
+    from.totalTokenHolders = BigInt.zero();
+    from.tokenHolders = new Array();
+    from.tokenHoldersNumber = new Array();
     from.totalTokens = BigInt.zero();
     from.totalTokensMinted = BigInt.zero();
     from.totalTransactions = BigInt.zero();
@@ -65,6 +68,9 @@ export function handleTransfer(event: Transfer): void {
   if (to === null) {
     // Owner - as Receiver
     to = new Owner(event.params.to.toHex());
+    to.totalTokenHolders = BigInt.zero();
+    to.tokenHolders = new Array();
+    to.tokenHoldersNumber = new Array();
     to.totalTokens = BigInt.zero();
     to.totalTokensMinted = BigInt.zero();
     to.totalTransactions = BigInt.zero();
@@ -85,7 +91,9 @@ export function handleTransfer(event: Transfer): void {
     token.contract = contract.id;
     token.tokenID = event.params.tokenId;
     token.tokenURI = fetchTokenURI(event.address, event.params.tokenId);
-    token.minter = to.id;
+    token.minter = event.params.from.equals(Address.zero())
+    ? to.id
+    : from.id;
     token.owner = to.id;
     token.burned = false;
     token.totalTransactions = BigInt.zero();
@@ -111,6 +119,43 @@ export function handleTransfer(event: Transfer): void {
   token.totalTransactions = token.totalTransactions.plus(BigInt.fromI32(1));
   token.updatedAt = event.block.timestamp;
   token.save();
+
+  // token holders
+  let minter = Owner.load(token.minter);
+  if (minter == null){
+    minter = new Owner(token.minter);
+    minter.totalTokenHolders = BigInt.zero();
+    minter.tokenHolders = new Array();
+    minter.tokenHoldersNumber = new Array();
+    minter.save();
+  }
+  let index = 0;
+  let holderExists = false;
+  let holdersNumber = minter.tokenHolders.length
+  for (; index < holdersNumber; index++) {
+    const holder = minter.tokenHolders[index];
+    if(event.params.to.toHex() == holder ){ // mint to an exist address
+      holderExists = true;
+      break;
+    }
+  }
+  if(holderExists){
+    minter.tokenHoldersNumber[index].plus(BigInt.fromI32(1));
+  }else{
+    minter.tokenHolders.push(to.id);
+    minter.tokenHoldersNumber.push(BigInt.fromI32(1));
+  }
+  if(event.params.from == Address.zero()){
+    minter.totalTokenHolders.plus(BigInt.fromI32(1));
+  }else if(event.params.to == Address.zero() && minter.totalTokenHolders > BigInt.fromI32(0)){
+    minter.totalTokenHolders.minus(BigInt.fromI32(1));
+  }else if(holdersNumber > 0 && minter.tokenHoldersNumber[index] == BigInt.fromI32(1)){
+    minter.tokenHolders.splice(index, 1);
+    minter.tokenHoldersNumber.splice(index, 1);
+  }else if(holdersNumber > 0 && minter.tokenHoldersNumber[index] > BigInt.fromI32(1)){
+    minter.tokenHoldersNumber[index].minus(BigInt.fromI32(1));
+  }
+  log.debug('Update minter:{},index:{},exists:{},num:{}', [minter.id, index.toString(), holderExists.toString(), minter.tokenHoldersNumber.toString()]);
 
   // Transaction
   const transaction = new Transaction(event.transaction.hash.toHex());
