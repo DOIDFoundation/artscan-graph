@@ -1,9 +1,76 @@
-import { Address, log, BigInt } from "@graphprotocol/graph-ts";
-import { Blockchain, Contract, Owner, Token, Transaction, DOID } from "../generated/schema";
+import { Address, ethereum, store, log, BigInt, dataSource } from "@graphprotocol/graph-ts";
+import { Blockchain, Contract, TokenHolder, Owner, Token, Transaction, DOID } from "../generated/schema";
 import { Transfer } from "../generated/Arts/ERC721";
 import { AddressChanged, NameRegistered } from "../generated/DoidRegistry/DoidRegistry";
 import { toBigDecimal } from "./utils/helpers";
 import { fetchName, fetchSymbol, fetchTokenURI } from "./utils/eip721";
+
+const BIG0 = BigInt.zero();
+const BIG1 = BigInt.fromI32(1);
+const COINTYPE_ETH = BigInt.fromI32(60);
+
+const KNOWN_MINTERS = new Map<string, string>();
+  if (dataSource.network() == "goerli") {
+    // DOID
+    KNOWN_MINTERS.set(
+      "0xf32950cf48c10431b27eff888d23cb31615dfcb4",
+      "0xafb2e1145f1a88ce489d22425ac84003fe50b3be"
+    );
+    KNOWN_MINTERS.set(
+      "0xab4d8acb8538e7f2b81a8e0db6530bbec96678b5",
+      "0xafb2e1145f1a88ce489d22425ac84003fe50b3be"
+    );
+    // TOKYO PUNKS
+    KNOWN_MINTERS.set(
+      "0x59a498d8cb5f0028591c865c44f55e30b76c9611",
+      "0x02eb75be1e72e988de64f0088d654d8ea1081e87"
+    );
+  } else {
+    // DOID
+    KNOWN_MINTERS.set(
+      "0xcb9302da98405ecc50b1d6d4f9671f05e143b5f7",
+      "0xf446563d6737df28d0fde28c82ce4f34e98540f3"
+    );
+    KNOWN_MINTERS.set(
+      "0x8b2aff81fec4e7787aeeb257b5d99626651ee43f",
+      "0xf446563d6737df28d0fde28c82ce4f34e98540f3"
+    );
+  }
+
+function knownMinter(contract: Address): string | null {
+  if (KNOWN_MINTERS.has(contract.toHex()))
+    return KNOWN_MINTERS.get(contract.toHex());
+
+  return null;
+}
+
+function loadOrNewOwner(address: string, block: ethereum.Block): Owner {
+  let owner = Owner.load(address);
+  if (owner === null) {
+    owner = new Owner(address);
+    owner.totalTokens = BIG0;
+    owner.totalTokensMinted = BIG0;
+    owner.totalTokenHolders = BIG0;
+    owner.totalTransactions = BIG0;
+    owner.block = block.number;
+    owner.createdAt = block.timestamp;
+    owner.updatedAt = block.timestamp;
+    owner.save();
+  }
+  return owner;
+}
+
+function loadOrNewTokenHolder(minter: string, holder: string, block: ethereum.Block): TokenHolder {
+  let tokenHolder = TokenHolder.load(minter + "-" + holder);
+  if (tokenHolder === null) {
+    tokenHolder = new TokenHolder(minter + "-" + holder);
+    tokenHolder.save();
+    let m = loadOrNewOwner(minter, block);
+    m.totalTokenHolders = m.totalTokenHolders.plus(BIG1);
+    m.save();
+  }
+  return tokenHolder;
+}
 
 export function handleTransfer(event: Transfer): void {
   let blockchain = Blockchain.load("DOID");
@@ -35,6 +102,11 @@ export function handleTransfer(event: Transfer): void {
     blockchain.totalContracts = blockchain.totalContracts.plus(BigInt.fromI32(1));
     blockchain.save();
   }
+
+  // Skip 721s without contract name.
+  if (contract.name === "unknown") 
+    return;
+  
   contract.totalTransactions = contract.totalTransactions.plus(BigInt.fromI32(1));
   contract.updatedAt = event.block.timestamp;
   if (event.params.to.equals(Address.zero())){
@@ -42,21 +114,7 @@ export function handleTransfer(event: Transfer): void {
   }
   contract.save();
 
-  let from = Owner.load(event.params.from.toHex());
-  if (from === null) {
-    // Owner - as Sender
-    from = new Owner(event.params.from.toHex());
-    from.totalTokenHolders = BigInt.zero();
-    from.tokenHolders = new Array();
-    from.tokenHoldersNumber = new Array();
-    from.totalTokens = BigInt.zero();
-    from.totalTokensMinted = BigInt.zero();
-    from.totalTransactions = BigInt.zero();
-    from.block = event.block.number;
-    from.createdAt = event.block.timestamp;
-    from.updatedAt = event.block.timestamp;
-    from.save();
-  }
+  let from = loadOrNewOwner(event.params.from.toHex(), event.block);
   from.totalTokens = event.params.from.equals(Address.zero())
     ? from.totalTokens
     : from.totalTokens.minus(BigInt.fromI32(1));
@@ -64,21 +122,7 @@ export function handleTransfer(event: Transfer): void {
   from.updatedAt = event.block.timestamp;
   from.save();
 
-  let to = Owner.load(event.params.to.toHex());
-  if (to === null) {
-    // Owner - as Receiver
-    to = new Owner(event.params.to.toHex());
-    to.totalTokenHolders = BigInt.zero();
-    to.tokenHolders = new Array();
-    to.tokenHoldersNumber = new Array();
-    to.totalTokens = BigInt.zero();
-    to.totalTokensMinted = BigInt.zero();
-    to.totalTransactions = BigInt.zero();
-    to.block = event.block.number;
-    to.createdAt = event.block.timestamp;
-    to.updatedAt = event.block.timestamp;
-    to.save();
-  }
+  let to = loadOrNewOwner(event.params.to.toHex(), event.block);
   to.totalTokens = to.totalTokens.plus(BigInt.fromI32(1));
   to.totalTransactions = to.totalTransactions.plus(BigInt.fromI32(1));
   to.updatedAt = event.block.timestamp;
@@ -91,9 +135,10 @@ export function handleTransfer(event: Transfer): void {
     token.contract = contract.id;
     token.tokenID = event.params.tokenId;
     token.tokenURI = fetchTokenURI(event.address, event.params.tokenId);
-    token.minter = event.params.from.equals(Address.zero())
-    ? to.id
-    : from.id;
+    token.minter =
+      knownMinter(event.address) || event.params.from.equals(Address.zero())
+        ? to.id
+        : from.id;
     token.owner = to.id;
     token.burned = false;
     token.totalTransactions = BigInt.zero();
@@ -102,9 +147,10 @@ export function handleTransfer(event: Transfer): void {
     token.updatedAt = event.block.timestamp;
     token.save();
 
-    // Owner - as Receiver
-    to.totalTokensMinted = to.totalTokensMinted.plus(BigInt.fromI32(1));
-    to.save();
+    // token holders
+    let minter = loadOrNewOwner(token.minter, event.block);
+    minter.totalTokensMinted = minter.totalTokensMinted.plus(BigInt.fromI32(1));
+    minter.save();
 
     // Contract
     contract.totalTokens = contract.totalTokens.plus(BigInt.fromI32(1));
@@ -120,43 +166,35 @@ export function handleTransfer(event: Transfer): void {
   token.updatedAt = event.block.timestamp;
   token.save();
 
-  // token holders
-  let minter = Owner.load(token.minter);
-  if (minter == null){
-    minter = new Owner(token.minter);
-    minter.totalTokenHolders = BigInt.zero();
-    minter.tokenHolders = new Array();
-    minter.tokenHoldersNumber = new Array();
-    minter.save();
-  }
-  let index = 0;
-  let holderExists = false;
-  let holdersNumber = minter.tokenHolders.length
-  for (; index < holdersNumber; index++) {
-    const holder = minter.tokenHolders[index];
-    if(event.params.to.toHex() == holder ){ // mint to an exist address
-      holderExists = true;
-      break;
+  // Update TokenHolder for old owner if not minting.
+  if (!event.params.from.equals(Address.zero())) {
+    let holder = loadOrNewTokenHolder(token.minter.toString(), from.id, event.block);
+    let index = holder.tokens.indexOf(token.id);
+    log.debug('TokenHolder:try remove token:{} from {}(size:{}) at index:{}', [token.id, holder.id, holder.tokens.length.toString(), index.toString()]);
+    if (index != -1) {
+      if (holder.tokens.length == 1) {
+        store.remove("TokenHolder", holder.id);
+        from.totalTokenHolders = from.totalTokenHolders.minus(BIG1);
+        from.save();
+        log.debug('TokenHolder:last holding, remove {}', [holder.id]);
+      } else {
+        holder.tokens[index] = holder.tokens.pop();
+        holder.save();
+        log.debug('TokenHolder:{} now size:{}', [holder.id, holder.tokens.length.toString()]);
+      }
     }
   }
-  if(holderExists){
-    minter.tokenHoldersNumber[index].plus(BigInt.fromI32(1));
-  }else{
-    minter.tokenHolders.push(to.id);
-    minter.tokenHoldersNumber.push(BigInt.fromI32(1));
+
+  // Update TokenHolder for new owner if not burning.
+  if (!event.params.to.equals(Address.zero())) {
+    let holder = loadOrNewTokenHolder(token.minter.toString(), to.id, event.block);
+    log.debug('TokenHolder:try add token:{} to {}(size:{})', [token.id, holder.id, holder.tokens.length.toString()]);
+    if (holder.tokens.indexOf(token.id) == -1) {
+      holder.tokens.push(token.id);
+      holder.save();
+      log.debug('TokenHolder:{} now size:{}', [holder.id, holder.tokens.length.toString()]);
+    }
   }
-  if(event.params.from == Address.zero()){
-    minter.totalTokenHolders.plus(BigInt.fromI32(1));
-  }else if(event.params.to == Address.zero() && minter.totalTokenHolders > BigInt.fromI32(0)){
-    minter.totalTokenHolders.minus(BigInt.fromI32(1));
-  }else if(holdersNumber > 0 && minter.tokenHoldersNumber[index] == BigInt.fromI32(1)){
-    minter.tokenHolders.splice(index, 1);
-    minter.tokenHoldersNumber.splice(index, 1);
-  }else if(holdersNumber > 0 && minter.tokenHoldersNumber[index] > BigInt.fromI32(1)){
-    minter.tokenHoldersNumber[index].minus(BigInt.fromI32(1));
-  }
-  minter.save()
-  log.debug('Update minter:{},index:{},exists:{},num:{}', [minter.id, index.toString(), holderExists.toString(), minter.tokenHoldersNumber.toString()]);
 
   // Transaction
   const transaction = new Transaction(event.transaction.hash.toHex());

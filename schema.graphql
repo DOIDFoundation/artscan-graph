@@ -14,6 +14,16 @@ type Blockchain @entity {
     "Total of Transactions"
     totalTransactions: BigInt!
 }
+type TokenHolder @entity {
+    "ID"
+    id: ID!
+    "Minter"
+    minter: Owner!
+    "Holder"
+    holder: Owner!
+    "Tokens hold"
+    tokens: [String!]!
+}
 """
 EIP-721 Owner(s)
 """
@@ -30,9 +40,8 @@ type Owner @entity {
 
     "Number of token holders"
     totalTokenHolders: BigInt!
-    "list of token holders"
-    tokenHolders: [String!]!
-    tokenHoldersNumber: [BigInt!]!
+    "List of token holders"
+    tokenHolders: [TokenHolder!]! @derivedFrom(field: "minter")
 
     "list of doids"
     doids: [DOID!]! @derivedFrom(field: "owner")
