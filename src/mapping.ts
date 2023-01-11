@@ -181,7 +181,9 @@ export function handleTransfer(event: Transfer): void {
         from.save();
         log.debug('TokenHolder:last holding, remove {}', [holder.id]);
       } else {
-        holder.tokens[index] = holder.tokens.pop();
+        let tokens = holder.tokens;
+        tokens[index] = tokens.pop();
+        holder.tokens = tokens;
         holder.save();
         log.debug('TokenHolder:{} now size:{}', [holder.id, holder.tokens.length.toString()]);
       }
@@ -193,7 +195,9 @@ export function handleTransfer(event: Transfer): void {
     let holder = loadOrNewTokenHolder(token.minter.toString(), to.id, event.block);
     log.debug('TokenHolder:try add token:{} to {}(size:{})', [token.id, holder.id, holder.tokens.length.toString()]);
     if (holder.tokens.indexOf(token.id) == -1) {
-      holder.tokens.push(token.id);
+      let tokens = holder.tokens;
+      tokens.push(token.id);
+      holder.tokens = tokens;
       holder.save();
       log.debug('TokenHolder:{} now size:{}', [holder.id, holder.tokens.length.toString()]);
     }
