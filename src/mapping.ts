@@ -75,8 +75,6 @@ export function handleTransfer(event: Transfer): void {
     blockchain.totalTransactions = BigInt.zero();
     blockchain.save();
   }
-  blockchain.totalTransactions = blockchain.totalTransactions.plus(BigInt.fromI32(1));
-  blockchain.save();
 
   let contract = Contract.load(event.address.toHex());
   if (contract === null) {
@@ -100,6 +98,8 @@ export function handleTransfer(event: Transfer): void {
   if (contract.name === "unknown") 
     return;
   
+  blockchain.totalTransactions = blockchain.totalTransactions.plus(BigInt.fromI32(1));
+  blockchain.save();
   contract.totalTransactions = contract.totalTransactions.plus(BigInt.fromI32(1));
   contract.updatedAt = event.block.timestamp;
   if (event.params.to.equals(Address.zero())){
