@@ -20,11 +20,6 @@ const KNOWN_MINTERS = new Map<string, string>();
       "0xab4d8acb8538e7f2b81a8e0db6530bbec96678b5",
       "0xafb2e1145f1a88ce489d22425ac84003fe50b3be"
     );
-    // TOKYO PUNKS
-    KNOWN_MINTERS.set(
-      "0x59a498d8cb5f0028591c865c44f55e30b76c9611",
-      "0x02eb75be1e72e988de64f0088d654d8ea1081e87"
-    );
   } else {
     // DOID
     KNOWN_MINTERS.set(
@@ -34,6 +29,11 @@ const KNOWN_MINTERS = new Map<string, string>();
     KNOWN_MINTERS.set(
       "0x8b2aff81fec4e7787aeeb257b5d99626651ee43f",
       "0xf446563d6737df28d0fde28c82ce4f34e98540f3"
+    );
+    // TOKYO PUNKS
+    KNOWN_MINTERS.set(
+      "0x59a498d8cb5f0028591c865c44f55e30b76c9611",
+      "0x02eb75be1e72e988de64f0088d654d8ea1081e87"
     );
   }
 
@@ -64,6 +64,9 @@ function loadOrNewTokenHolder(minter: string, holder: string, block: ethereum.Bl
   let tokenHolder = TokenHolder.load(minter + "-" + holder);
   if (tokenHolder === null) {
     tokenHolder = new TokenHolder(minter + "-" + holder);
+    tokenHolder.minter = minter;
+    tokenHolder.holder = holder;
+    tokenHolder.tokens = new Array();
     tokenHolder.save();
     let m = loadOrNewOwner(minter, block);
     m.totalTokenHolders = m.totalTokenHolders.plus(BIG1);
