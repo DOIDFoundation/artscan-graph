@@ -9,33 +9,38 @@ const BIG0 = BigInt.zero();
 const BIG1 = BigInt.fromI32(1);
 const COINTYPE_ETH = BigInt.fromI32(60);
 
-const KNOWN_MINTERS = new Map<string, string>();
-  if (dataSource.network() == "goerli") {
-    // DOID
-    KNOWN_MINTERS.set(
-      "0xf32950cf48c10431b27eff888d23cb31615dfcb4",
-      "0xafb2e1145f1a88ce489d22425ac84003fe50b3be"
-    );
-    KNOWN_MINTERS.set(
-      "0xab4d8acb8538e7f2b81a8e0db6530bbec96678b5",
-      "0xafb2e1145f1a88ce489d22425ac84003fe50b3be"
-    );
-  } else {
-    // DOID
-    KNOWN_MINTERS.set(
-      "0xcb9302da98405ecc50b1d6d4f9671f05e143b5f7",
-      "0xf446563d6737df28d0fde28c82ce4f34e98540f3"
-    );
-    KNOWN_MINTERS.set(
-      "0x8b2aff81fec4e7787aeeb257b5d99626651ee43f",
-      "0xf446563d6737df28d0fde28c82ce4f34e98540f3"
-    );
-    // TOKYO PUNKS
-    KNOWN_MINTERS.set(
-      "0x59a498d8cb5f0028591c865c44f55e30b76c9611",
-      "0x02eb75be1e72e988de64f0088d654d8ea1081e87"
-    );
-  }
+var KNOWN_MINTERS = new Map<string, string>();
+if (dataSource.network() == "goerli") {
+  // DOID
+  KNOWN_MINTERS.set(
+    "0xf32950cf48c10431b27eff888d23cb31615dfcb4",
+    "0xafb2e1145f1a88ce489d22425ac84003fe50b3be"
+  );
+  KNOWN_MINTERS.set(
+    "0xab4d8acb8538e7f2b81a8e0db6530bbec96678b5",
+    "0xafb2e1145f1a88ce489d22425ac84003fe50b3be"
+  );
+} else {
+  // DOID
+  KNOWN_MINTERS.set(
+    "0xcb9302da98405ecc50b1d6d4f9671f05e143b5f7",
+    "0xf446563d6737df28d0fde28c82ce4f34e98540f3"
+  );
+  KNOWN_MINTERS.set(
+    "0x8b2aff81fec4e7787aeeb257b5d99626651ee43f",
+    "0xf446563d6737df28d0fde28c82ce4f34e98540f3"
+  );
+  // TOKYO PUNKS
+  KNOWN_MINTERS.set(
+    "0x59a498d8cb5f0028591c865c44f55e30b76c9611",
+    "0x02eb75be1e72e988de64f0088d654d8ea1081e87"
+  );
+}
+
+log.info("network {} has {} known minters", [
+  dataSource.network(),
+  KNOWN_MINTERS.size.toString(),
+]);
 
 function knownMinter(contract: Address): string | null {
   if (KNOWN_MINTERS.has(contract.toHex()))
