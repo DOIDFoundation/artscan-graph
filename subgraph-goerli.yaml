@@ -25,7 +25,7 @@ dataSources:
     name: DoidRegistry
     network: goerli
     source:
-      address: "0xe8B04d54BeefE28C357FDDAf2182e9342cf7b885"
+      address: "0xab4d8acb8538e7f2b81a8e0db6530bbec96678b5"
       abi: DoidRegistry
       startBlock: 8200000
     mapping:

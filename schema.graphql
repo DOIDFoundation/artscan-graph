@@ -34,6 +34,9 @@ type Owner @entity {
     tokenHolders: [String!]!
     tokenHoldersNumber: [BigInt!]!
 
+    "list of doids"
+    doids: [DOID!]! @derivedFrom(field: "owner")
+
     "List of Transactions (as Sender)"
     fromTransactions: [Transaction!]! @derivedFrom(field: "from")
     "List of Transactions (as Receiver)"

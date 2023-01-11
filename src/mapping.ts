@@ -155,6 +155,7 @@ export function handleTransfer(event: Transfer): void {
   }else if(holdersNumber > 0 && minter.tokenHoldersNumber[index] > BigInt.fromI32(1)){
     minter.tokenHoldersNumber[index].minus(BigInt.fromI32(1));
   }
+  minter.save()
   log.debug('Update minter:{},index:{},exists:{},num:{}', [minter.id, index.toString(), holderExists.toString(), minter.tokenHoldersNumber.toString()]);
 
   // Transaction
