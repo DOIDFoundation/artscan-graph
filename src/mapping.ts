@@ -1,5 +1,5 @@
 import { Address, ethereum, store, log, BigInt, dataSource } from "@graphprotocol/graph-ts";
-import { Blockchain, Contract, TokenHolder, Owner, Token, Transaction, DOID } from "../generated/schema";
+import { Blockchain, Contract, Owner, Token, Transaction, DOID, TokenMinterHolder, MinterHolder } from "../generated/schema";
 import { Transfer } from "../generated/Arts/ERC721";
 import { AddressChanged, NameRegistered } from "../generated/DoidRegistry/DoidRegistry";
 import { toBigDecimal } from "./utils/helpers";
@@ -58,21 +58,6 @@ function loadOrNewOwner(address: string, block: ethereum.Block): Owner {
     owner.save();
   }
   return owner;
-}
-
-function loadOrNewTokenHolder(minter: string, holder: string, block: ethereum.Block): TokenHolder {
-  let tokenHolder = TokenHolder.load(minter + "-" + holder);
-  if (tokenHolder === null) {
-    tokenHolder = new TokenHolder(minter + "-" + holder);
-    tokenHolder.minter = minter;
-    tokenHolder.holder = holder;
-    tokenHolder.tokens = new Array();
-    tokenHolder.save();
-    let m = loadOrNewOwner(minter, block);
-    m.totalTokenHolders = m.totalTokenHolders.plus(BIG1);
-    m.save();
-  }
-  return tokenHolder;
 }
 
 export function handleTransfer(event: Transfer): void {
@@ -171,45 +156,84 @@ export function handleTransfer(event: Transfer): void {
 
   // Update TokenHolder for old owner if not minting.
   if (!event.params.from.equals(Address.zero())) {
-    let holder = TokenHolder.load(token.minter.toString() + "-" + from.id);
-    if (holder != null)
-    {
-      let index = holder.tokens.indexOf(token.id);
-      log.debug(
-        "TokenHolder:try remove token:{} from {}(size:{}) at index:{}",
-        [token.id, holder.id, holder.tokens.length.toString(), index.toString()]
-      );
-      if (index != -1) {
-        if (holder.tokens.length == 1) {
-          store.remove("TokenHolder", holder.id);
-          from.totalTokenHolders = from.totalTokenHolders.minus(BIG1);
-          from.save();
-          log.debug("TokenHolder:last holding, remove {}", [holder.id]);
-        } else {
-          let tokens = holder.tokens;
-          tokens[index] = tokens.pop();
-          holder.tokens = tokens;
-          holder.save();
-          log.debug("TokenHolder:{} now size:{}", [
-            holder.id,
-            holder.tokens.length.toString(),
+    let minterHolderId = token.minter + "-" + from.id;
+    let tokenMinterHolder = TokenMinterHolder.load(
+      token.id + "-" + minterHolderId
+    );
+    if (tokenMinterHolder != null) {
+      log.debug("Holders: remove TokenMinterHolder {}", [tokenMinterHolder.id]);
+      store.remove("TokenMinterHolder", tokenMinterHolder.id);
+      let minterHolder = MinterHolder.load(minterHolderId);
+      if (minterHolder != null) {
+        if (!minterHolder.totalTokens.equals(BIG1)) {
+          minterHolder.totalTokens = minterHolder.totalTokens.minus(BIG1);
+          minterHolder.save();
+          log.debug("Holders: MinterHolder {} now have {} tokens", [
+            minterHolder.id,
+            minterHolder.totalTokens.toString(),
           ]);
+        } else {
+          log.debug("Holders: remove MinterHolder {}", [minterHolder.id]);
+          store.remove("MinterHolder", minterHolder.id);
+          let minter = Owner.load(token.minter);
+          if (minter != null) {
+            minter.totalTokenHolders = minter.totalTokenHolders.minus(BIG1);
+            minter.save();
+          } else {
+            log.error(
+              "Holders: TokenMinterHolder found but Minter not found for {}",
+              [tokenMinterHolder.id]
+            );
+          }
         }
+      } else {
+        log.error(
+          "Holders: TokenMinterHolder found but MinterHolder not found for {}",
+          [tokenMinterHolder.id]
+        );
       }
     }
   }
 
   // Update TokenHolder for new owner if not burning.
   if (!event.params.to.equals(Address.zero())) {
-    let holder = loadOrNewTokenHolder(token.minter.toString(), to.id, event.block);
-    log.debug('TokenHolder:try add token:{} to {}(size:{})', [token.id, holder.id, holder.tokens.length.toString()]);
-    if (holder.tokens.indexOf(token.id) == -1) {
-      let tokens = holder.tokens;
-      tokens.push(token.id);
-      holder.tokens = tokens;
-      holder.save();
-      log.debug('TokenHolder:{} now size:{}', [holder.id, holder.tokens.length.toString()]);
+    let minterHolderId = token.minter + "-" + to.id;
+    let minterHolder = MinterHolder.load(minterHolderId);
+    if (minterHolder === null) {
+      minterHolder = new MinterHolder(minterHolderId);
+      minterHolder.minter = token.minter;
+      minterHolder.holder = to.id;
+      minterHolder.totalTokens = BIG0;
+      minterHolder.save();
+      let minter = Owner.load(token.minter);
+      if (minter != null) {
+        minter.totalTokenHolders = minter.totalTokenHolders.plus(BIG1);
+        minter.save();
+      } else {
+        log.error("Holders: MinterHolder created but Minter not found for {}", [
+          minterHolder.id,
+        ]);
+      }
+      log.debug("Holders: create MinterHolder {}", [minterHolder.id]);
     }
+    let tokenMinterHolder = TokenMinterHolder.load(
+      token.id + "-" + minterHolderId
+    );
+    if (tokenMinterHolder === null) {
+      tokenMinterHolder = new TokenMinterHolder(
+        token.id + "-" + minterHolderId
+      );
+      tokenMinterHolder.token = token.id;
+      tokenMinterHolder.minterHolder = minterHolderId;
+      tokenMinterHolder.save();
+      minterHolder.totalTokens = minterHolder.totalTokens.plus(BIG1);
+      minterHolder.save();
+      log.debug("Holders: create TokenMinterHolder {}", [tokenMinterHolder.id]);
+    }
+    log.debug("Holders: MinterHolder {} now holds {} tokens", [
+      minterHolder.id,
+      minterHolder.totalTokens.toString(),
+    ]);
   }
 
   // Transaction

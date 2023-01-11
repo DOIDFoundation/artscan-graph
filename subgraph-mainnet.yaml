@@ -39,8 +39,7 @@ dataSources:
         - name: DoidRegistry
           file: ./abis/DoidRegistry.json
       eventHandlers:
-        - event: NameRegistered(indexed uint256,indexed string,indexed address)
+        - event: NameRegistered(indexed uint256,string,indexed address)
           handler: handleNameRegistered
         - event: AddressChanged(indexed bytes32,uint256,bytes)
           handler: handleAddressChanged
-
