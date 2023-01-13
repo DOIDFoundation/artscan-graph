@@ -128,10 +128,15 @@ export function handleTransfer(event: Transfer): void {
     token.contract = contract.id;
     token.tokenID = event.params.tokenId;
     token.tokenURI = fetchTokenURI(event.address, event.params.tokenId);
-    token.minter =
-      knownMinter(event.address) || event.params.from.equals(Address.zero())
+    let isKnown =  knownMinter(event.address) 
+    if(isKnown == null){
+      token.minter = event.params.from.equals(Address.zero())
         ? to.id
         : from.id;
+    }else{
+      token.minter = isKnown!
+    }
+
     token.owner = to.id;
     token.burned = false;
     token.totalTransactions = BigInt.zero();
