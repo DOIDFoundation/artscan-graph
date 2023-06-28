@@ -6,7 +6,7 @@ dataSources:
     name: Arts_KnownOrigin
     network: mainnet
     source:
-      address: "0xabb3738f04dc2ec20f4ae4462c3d069d02ae045b"
+      address: '0xabb3738f04dc2ec20f4ae4462c3d069d02ae045b'
       abi: ERC721
       startBlock: 13080871
     mapping:
@@ -26,7 +26,7 @@ dataSources:
     name: Arts_TokyoPunks
     network: mainnet
     source:
-      address: "0x59a498d8cb5f0028591c865c44f55e30b76c9611"
+      address: '0x59a498d8cb5f0028591c865c44f55e30b76c9611'
       abi: ERC721
       startBlock: 14089961
     mapping:
@@ -46,7 +46,7 @@ dataSources:
     name: Arts_Foundation
     network: mainnet
     source:
-      address: "0x3b3ee1931dc30c1957379fac9aba94d1c48a5405"
+      address: '0x3b3ee1931dc30c1957379fac9aba94d1c48a5405'
       abi: ERC721
       startBlock: 11648721
     mapping:
@@ -66,7 +66,7 @@ dataSources:
     name: Arts_Superare
     network: mainnet
     source:
-      address: "0xb932a70a57673d89f4acffbe830e8ed7f75fb9e0"
+      address: '0xb932a70a57673d89f4acffbe830e8ed7f75fb9e0'
       abi: ERC721
       startBlock: 8486734
     mapping:
@@ -86,7 +86,7 @@ dataSources:
     name: DoidRegistry
     network: mainnet
     source:
-      address: "0xcb9302da98405ecc50b1d6d4f9671f05e143b5f7"
+      address: '0xcb9302da98405ecc50b1d6d4f9671f05e143b5f7'
       abi: DoidRegistry
       startBlock: 16251035
     mapping:
@@ -96,6 +96,7 @@ dataSources:
       file: ./src/mapping.ts
       entities:
         - NameRegistered
+        - Transfer
       abis:
         - name: DoidRegistry
           file: ./abis/DoidRegistry.json
@@ -104,3 +105,51 @@ dataSources:
           handler: handleNameRegistered
         - event: AddressChanged(indexed bytes32,uint256,bytes)
           handler: handleAddressChanged
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleDoidTransfer
+  - kind: ethereum
+    name: Arts_FoundationFactory
+    network: mainnet
+    source:
+      address: '0x612e2daddc89d91409e40f946f9f7cfe422e777e'
+      abi: NFTCollectionFactory
+      startBlock: 16800000
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - NFTDropCollectionCreated
+        - NFTCollectionCreated
+        - NFTTimedEditionCollectionCreated
+      abis:
+        - name: NFTCollectionFactory
+          file: ./abis/NFTCollectionFactory.json
+      eventHandlers:
+        - event: NFTDropCollectionCreated(indexed address,indexed address,indexed address,string,string,string,bool,uint256,address,uint256,uint256)
+          handler: handlerFoundationNFTDropCollectionCreated
+        - event: NFTCollectionCreated(indexed address,indexed address,indexed uint256,string,string,uint256)
+          handler: handlerFoundationNFTCollectionCreated
+        - event: NFTTimedEditionCollectionCreated(indexed address,indexed address,indexed address,string,string,string,uint256,address,uint256,uint256)
+          handler: handlerFoundationNFTTimedEditionCollectionCreated
+      file: ./src/mapping.ts
+
+templates:
+  - name: ERC721
+    kind: ethereum/contract
+    network: mainnet
+    source:
+      abi: ERC721
+    mapping:
+      kind: ethereum/events
+      apiVersion: 0.0.6
+      language: wasm/assemblyscript
+      entities:
+        - Transfer
+      abis:
+        - name: ERC721
+          file: ./abis/ERC721.json
+      eventHandlers:
+        - event: Transfer(indexed address,indexed address,indexed uint256)
+          handler: handleTransfer
+      file: ./src/mapping.ts
