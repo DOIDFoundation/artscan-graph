@@ -332,6 +332,9 @@ export function handlerFoundationNFTCollectionCreated(
   event: NFTCollectionCreated
 ): void {
   ERC721.bind(event.params.collection);
+  log.debug('erc721 template created, from foundationFactory:{}', [
+    event.params.collection.toHexString(),
+  ]);
 }
 
 export function handlerFoundationNFTTimedEditionCollectionCreated(
